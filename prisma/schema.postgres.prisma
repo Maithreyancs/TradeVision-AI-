@@ -1,0 +1,163 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                String                  @id @default(uuid())
+  email             String                  @unique
+  password          String
+  name              String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  watchlists        Watchlist[]
+  alerts            PriceAlert[]
+  drawings          ChartDrawing[]
+  indicatorSettings UserIndicatorSettings[]
+}
+
+model Asset {
+  id            String   @id @default(uuid())
+  symbol        String   @unique
+  name          String
+  assetClass    String   // crypto, indian_stocks, us_stocks, forex, commodities, indices
+  baseCurrency  String
+  quoteCurrency String
+  exchange      String
+  isPopular     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Watchlist {
+  id        String          @id @default(uuid())
+  name      String
+  userId    String?
+  user      User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isDefault Boolean         @default(false)
+  items     WatchlistItem[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model WatchlistItem {
+  id           String    @id @default(uuid())
+  watchlistId  String
+  watchlist    Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  symbol       String
+  displayOrder Int       @default(0)
+  notes        String?
+  createdAt    DateTime  @default(now())
+}
+
+model PriceAlert {
+  id           String    @id @default(uuid())
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol       String
+  condition    String    // ABOVE, BELOW, RSI_ABOVE, RSI_BELOW, EMA_CROSS, BREAK_SUPPORT, BREAK_RESISTANCE
+  targetValue  Float
+  isTriggered  Boolean   @default(false)
+  triggeredAt  DateTime?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model ChartDrawing {
+  id              String   @id @default(uuid())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol          String
+  timeframe       String
+  toolType        String   // trendline, horizontal, vertical, ray, support, resistance, fibonacci, fib_extension, rectangle, channel, price_range, measure
+  coordinatesJson String   // JSON string with points {x, y, time, price}
+  stylesJson      String   // JSON string with color, width, etc.
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model UserIndicatorSettings {
+  id           String   @id @default(uuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol       String?
+  settingsJson String   // JSON configuration of enabled indicators and their parameters
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model MarketSnapshot {
+  id           String   @id @default(uuid())
+  symbol       String
+  price        Float
+  change24h    Float
+  change24hPct Float
+  high24h      Float
+  low24h       Float
+  volume24h    Float
+  timestamp    DateTime
+  exchange     String
+  createdAt    DateTime @default(now())
+}
+
+model AnalysisResult {
+  id                   String   @id @default(uuid())
+  symbol               String
+  timeframe            String
+  trendClassification  String   // BULLISH, BEARISH, SIDEWAYS
+  trendScore           Float
+  confidence           Float
+  rsi                  Float?
+  macd                 Float?
+  emaShort             Float?
+  emaLong              Float?
+  supportLevelsJson    String   // JSON array of support levels
+  resistanceLevelsJson String   // JSON array of resistance levels
+  bullishSignalsJson   String   // JSON array of strings
+  bearishSignalsJson   String   // JSON array of strings
+  riskFactorsJson      String   // JSON array of strings
+  aiSummary            String?
+  timestamp            DateTime @default(now())
+}
+
+model PortfolioHolding {
+  id          String   @id @default(uuid())
+  userId      String?
+  symbol      String
+  name        String
+  assetClass  String
+  quantity    Float
+  avgBuyPrice Float
+  currency    String   @default("USD")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([symbol])
+}
+
+model PortfolioCash {
+  id        String   @id @default(uuid())
+  userId    String?  @unique
+  balance   Float    @default(0.0)
+  currency  String   @default("USD")
+  updatedAt DateTime @updatedAt
+}
+
+model PortfolioTransaction {
+  id        String   @id @default(uuid())
+  userId    String?
+  symbol    String
+  type      String   // BUY, SELL, DEPOSIT, WITHDRAW
+  quantity  Float
+  price     Float
+  total     Float
+  currency  String   @default("USD")
+  createdAt DateTime @default(now())
+}
+
